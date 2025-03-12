@@ -20,3 +20,4 @@ class StudentRegistrationForm(forms.ModelForm):
         self.fields['batch'].widget.attrs.update({'class': 'form-control'})
         self.fields['phone_no'].widget.attrs.update({'class': 'form-control'})
         self.fields['tutor'].widget.attrs.update({'class': 'form-control'})
+        

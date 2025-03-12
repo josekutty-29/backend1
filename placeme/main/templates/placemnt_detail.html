@@ -1,0 +1,30 @@
+{# placement_detail.html #}
+{% extends 'base.html' %}
+
+{% block title %}{{ placement.company_name }}{% endblock %}
+
+{% block content %}
+<h2>{{ placement.company_name }}</h2>
+<p><strong>Company:</strong> {{ placement.company_name }}</p>
+<p><strong>CGPA Required:</strong> {{ placement.cgpa_required }}</p>
+<p><strong>Backlogs Allowed:</strong> {{ placement.no_of_backpapers }}</p>
+<p><strong>Salary:</strong> {{ placement.salary }}</p>
+<p><strong>Description:</strong> {{ placement.description }}</p>
+<p><strong>Skills:</strong> {{ placement.skillset }}</p>
+<p><strong>Contact Email:</strong> {{ placement.contact_email }}</p>
+<p><strong>Posted Date:</strong> {{ placement.posted_date }}</p>
+<p><strong>Deadline:</strong> {{ placement.final_date }}</p>
+
+{% if user.is_authenticated and user.role == 'student' %}
+    {% if has_applied %}
+        <p><strong>Status:</strong> Applied</p>
+    {% else %}
+        <form method="post" action="{% url 'apply_for_placement' placement.offer_id %}">
+            {% csrf_token %}
+            <button type="submit">Register</button>
+        </form>
+    {% endif %}
+{% endif %}
+
+<a href="{% url 'student_dashboard' %}">Back to Dashboard</a>
+{% endblock %}

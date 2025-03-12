@@ -1,176 +1,188 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Placement Student Dashboard</title>
-    
-    <!-- Fonts & Icons -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" 
-          integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" 
-          crossorigin="anonymous" referrerpolicy="no-referrer" />
-    
-    <!-- Styles -->
-    <link rel="stylesheet" href="{% static 'admin_styles.css' %}">
 
-    <!-- Apply Theme Before Page Load (Fixes FOUC) -->
-    <script>
-        (function () {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            document.documentElement.classList.add(savedTheme === 'light' ? 'theme-light' : 'theme-dark');
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-container">
-        <aside class="app-sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <button class="sidebar-toggle" id="sidebarToggle">
-                    <i class="material-icons">menu</i>
-                </button>
-            </div>
-            <nav class="sidebar-nav">
-                <button class="nav-button active" id="navPlacements" data-page="placementsPage">
-                    <i class="material-icons">assignment</i>
-                    <span class="nav-button-text">Placements</span>
-                </button>
-                <button class="nav-button" id="navNotifications" data-page="notificationsPage">
-                    <i class="material-icons">notifications</i>
-                    <span class="nav-button-text">Notifications</span>
-                </button>
-                <button class="nav-button" id="navLogout">
-                    <i class="material-icons">power_settings_new</i>
-                    <span class="nav-button-text">Log Out</span>
-                </button>
-            </nav>
-        </aside>
+{% block title %}Student Dashboard{% endblock %}
 
-        <main class="app-main-content">
-            <header class="app-header">
-                <div class="app-header-left">
-                    <div class="user-profile">
-                        <div class="user-avatar" id="userAvatar">
-                            {% if user.first_name %}
-                                {{ user.first_name|slice:":1"|upper }}
+{% block extra_js %}
+    <script type="module" src="{% static 'student_script.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="app-container">
+    <aside class="app-sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="material-icons">menu</i>
+            </button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{% url 'student_dashboard' %}" class="nav-button active" id="navPlacements">
+                <i class="material-icons">assignment</i>
+                <span class="nav-button-text">Placements</span>
+            </a>
+            <a href="{% url 'logout' %}" class="nav-button" id="navLogout">
+                <i class="material-icons">power_settings_new</i>
+                <span class="nav-button-text">Log Out</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="app-main-content">
+        <header class="app-header">
+            <div class="app-header-left">
+                <div class="user-profile">
+                    <div class="user-avatar" id="userAvatar">
+                        {% if user.first_name %}
+                            {{ user.first_name|slice:":1"|upper }}
+                        {% else %}
+                            S
+                        {% endif %}
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name" id="userName">
+                             {% if profile %}
+                                {{ user.first_name }} {{ user.last_name }} ({{ profile.reg_no }})
                             {% else %}
-                                S
+                                {{ user.first_name }} {{ user.last_name }}{% if user.regno %} ({{ user.regno }}){% endif %}
                             {% endif %}
                         </div>
-                        <div class="user-info">
-                            <div class="user-name" id="userName">
-                                {% if profile %}
-                                    {{ user.first_name }} {{ user.last_name }} ({{ profile.reg_no }})
-                                {% else %}
-                                    {{ user.first_name }} {{ user.last_name }}{% if user.regno %} ({{ user.regno }}){% endif %}
-                                {% endif %}
-                            </div>
-                            <div class="user-role" id="userRole">Student</div>
-                        </div>
+                        <div class="user-role" id="userRole">Student</div>
                     </div>
                 </div>
-                <div class="app-header-right">
-                    <button class="app-header-button" id="viewProfileButton" data-page="profilePage">
-                        <i class="material-icons">account_circle</i>
-                        <span>View Profile</span>
-                    </button>
-                    <button class="app-header-button" id="themeToggle">
-                        <i class="material-icons">brightness_4</i>
-                        <span>Toggle Theme</span>
-                    </button>
+            </div>
+            <div class="app-header-right">
+                <!--  KEEP THE VIEW PROFILE BUTTON -->
+                <button class="app-header-button" id="viewProfileButton">
+                    <i class="material-icons">account_circle</i>
+                    <span>View Profile</span>
+                </button>
+                <button class="app-header-button" id="themeToggle">
+                    <i class="material-icons">brightness_4</i>
+                    <span>Toggle Theme</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="page-content">
+            <!-- Placements Page (Initially Visible) -->
+            <section id="placementsPage" class="page active-page">
+                <h1 class="page-title">Available Placements</h1>
+                <div class="filter-buttons">
+                    <a href="{% url 'student_dashboard' %}?filter=available" class="app-button filter-button {% if filter == 'available' %}active{% endif %}">Available</a>
+                    <a href="{% url 'student_dashboard' %}?filter=liked" class="app-button filter-button {% if filter == 'liked' %}active{% endif %}">Liked</a>
+                    <a href="{% url 'student_dashboard' %}?filter=applied" class="app-button filter-button {% if filter == 'applied' %}active{% endif %}">Applied</a>
                 </div>
-            </header>
+                <ul class="placement-list" id="placementList">
+                   {% for placement in placements %}
+                        <li class="placement-list-item {% if placement.has_applied %}applied-placement{% endif %}"
+                            data-placement-id="{{ placement.offer_id }}"
+                            data-company="{{ placement.company_name }}"
+                            data-cgpa="{{ placement.cgpa_required }}"
+                            data-backlogs="{{ placement.no_of_backpapers }}"
+                            data-salary="{{ placement.salary }}"
+                            data-description="{{ placement.description|escapejs }}"
+                            data-skills="{{ placement.skillset|escapejs }}"
+                            data-contact="{{ placement.contact_email }}"
+                            data-posted="{{ placement.posted_date|date:'Y-m-d' }}"
+                            data-deadline="{{ placement.final_date|date:'Y-m-d' }}"
+                            data-has-applied="{{ placement.has_applied }}"
+                            data-is-liked="{% if request.user in placement.liked_by.all %}true{% else %}false{% endif %}">
+                            <div class="placement-info">
+                                <i class="material-icons placement-icon">business_center</i>
+                                <span class="placement-title">{{ placement.company_name }}</span>
+                            </div>
+                            <div class="placement-actions">
+                                <button class="like-button" data-placement-id="{{ placement.offer_id }}">
+                                    <i class="material-icons">
+                                        {% if request.user in placement.liked_by.all %}favorite{% else %}favorite_border{% endif %}
+                                    </i>
+                                </button>
+                            </div>
+                        </li>
+                    {% empty %}
+                        <li>No placements available.</li>
+                    {% endfor %}
+                </ul>
+            </section>
 
-            <div class="page-content">
-                <!-- Placements Page -->
-                <section id="placementsPage" class="page active-page">
-                    <h1 class="page-title">Available Placements</h1>
-                    <div class="filter-buttons">
-                        <button class="app-button filter-button active" data-filter="available">Available</button>
-                        <button class="app-button filter-button" data-filter="liked">Liked</button>
-                        <button class="app-button filter-button" data-filter="applied">Applied</button>
+            <!-- Student Profile Page (Initially Hidden) -->
+             <section id="profilePage" class="page">
+                <div class="profile-container">
+                    <div class="profile-header">
+                        <button  class="app-button-icon back-button" id="profileBackButton">
+                            <i class="material-icons">arrow_back</i>
+                        </button>
+                        <h2 class="profile-title">Profile</h2>
                     </div>
-                    <ul class="placement-list" id="placementList"></ul>
-                </section>
-
-                <!-- Notifications Page -->
-                <section id="notificationsPage" class="page">
-                    <h1 class="page-title">Notifications</h1>
-                    <ul class="notification-list" id="notificationList"></ul>
-                </section>
-
-                <!-- Student Profile Page -->
-                <section id="profilePage" class="page">
-                    <div class="profile-container">
-                        <div class="profile-header">
-                            <button class="app-button-icon back-button" id="backButton">
-                                <i class="material-icons">arrow_back</i>
-                            </button>
-                            <h2 class="profile-title">Profile</h2>
+                    <div class="profile-details">
+                        <div class="profile-detail-item">
+                            <strong>Name:</strong> <span id="profileName">{{ user.first_name }} {{ user.last_name }}</span>
                         </div>
-                        <div class="profile-details">
-                            <div class="profile-detail-item">
-                                <strong>Name:</strong> <span id="profileName">{{ user.first_name }} {{ user.last_name }}</span>
-                            </div>
-                            <div class="profile-detail-item">
-                                <strong>Email:</strong> <span id="profileEmail">{{ user.email }}</span>
-                            </div>
-                            <div class="profile-detail-item">
-                                <strong>CGPA:</strong> <span id="profileCGPA"></span>
-                            </div>
-                            <div class="profile-detail-item">
-                                <strong>Backlogs:</strong> <span id="profileBacklogs"></span>
-                            </div>
+                        <div class="profile-detail-item">
+                            <strong>Email:</strong> <span id="profileEmail">{{ user.email }}</span>
                         </div>
+
+                        {% if profile and profile.marks.all.exists %}
+                        <div class="profile-detail-item">
+                            <strong>Registration Number:</strong> <span id="profileRegNo">{{ profile.reg_no}}</span>
+                        </div>
+                        <div class="profile-detail-item">
+                            <strong>CGPA:</strong> <span id="profileCGPA">{{ profile.marks.all.first.cgpa }}</span>
+                        </div>
+                        <div class="profile-detail-item">
+                            <strong>Backlogs:</strong> <span id="profileBacklogs">{{ profile.marks.all.first.backlog }}</span>
+                        </div>
+                        <div class="profile-detail-item">
+                            <strong>Department:</strong> <span id="profileDepartment">{{ profile.department }}</span>
+                        </div>
+                         <div class="profile-detail-item">
+                            <strong>Division:</strong> <span id="profileDivision">{{ profile.division }}</span>
+                        </div>
+                         <div class="profile-detail-item">
+                            <strong>Semester:</strong> <span id="profileSemester">{{ profile.semester }}</span>
+                        </div>
+                         <div class="profile-detail-item">
+                            <strong>Date of Birth:</strong> <span id="profileDob">{{ profile.date_of_birth }}</span>
+                        </div>
+                        <div class="profile-detail-item">
+                            <strong>Batch:</strong> <span id="profileBatch">{{ profile.batch }}</span>
+                        </div>
+                         <div class="profile-detail-item">
+                            <strong>Phone Number:</strong> <span id="profilePhone">{{ profile.phone_no }}</span>
+                        </div>
+                        {% else %}
+                        <p>Please complete your profile.</p>
+                        {% endif %}
+
                     </div>
-                </section>
+                </div>
+            </section>
 
-                <!-- Details Page -->
-                <section id="detailsPage" class="page">
-                    <h2 id="detailsPageTitle"></h2>
-                    <p id="detailsDescription"></p>
+
+            <!-- Details Page (Initially Hidden) -->
+            <section id="detailsPage" class="page">
+                <div class="details-header">
                     <button id="detailsBackButton" class="app-button-icon">
                         <i class="material-icons">arrow_back</i>
                     </button>
-                </section>
-            </div>
-        </main>
-    </div>
-
-    <!-- Scripts -->
-    <!-- <script type="module" src="{% static 'student_script.js' %}"></script>
-    <script type="module" src="{% static 'common.js' %}"></script> -->
-
-    <!-- Setup Theme Toggle -->
-    <script>
-        function setupThemeToggle() {
-            console.log("Theme toggle called");
-            const themeToggle = document.getElementById('themeToggle');
-
-            if (themeToggle) {
-                const savedTheme = localStorage.getItem('theme');
-
-                if (savedTheme === 'light') {
-                    document.body.classList.remove('theme-dark');
-                    document.body.classList.add('theme-light');
-                } else {
-                    document.body.classList.add('theme-dark');
-                    document.body.classList.remove('theme-light');
-                    localStorage.setItem('theme', 'dark');
-                }
-
-                themeToggle.addEventListener('click', () => {
-                    document.body.classList.toggle('theme-dark');
-                    document.body.classList.toggle('theme-light');
-                    localStorage.setItem('theme', document.body.classList.contains('theme-light') ? 'light' : 'dark');
-                });
-            }
-        }
-
-        setupThemeToggle();
-    </script>
-</body>
-</html>
+                    <h2 id="detailsPageTitle"></h2>
+                </div>
+                <p><strong>Company:</strong> <span id="detailsCompany"></span></p>
+                <p><strong>CGPA Required:</strong> <span id="detailsCgpa"></span></p>
+                <p><strong>Backlogs Allowed:</strong> <span id="detailsBacklogs"></span></p>
+                <p><strong>Salary:</strong> <span id="detailsSalary"></span></p>
+                <p><strong>Description:</strong> <span id="detailsDescription"></span></p>
+                <p><strong>Skills:</strong> <span id="detailsSkills"></span></p>
+                <p><strong>Contact Email:</strong> <span id="detailsContact"></span></p>
+                <p><strong>Posted Date:</strong> <span id="detailsPosted"></span></p>
+                <p><strong>Deadline:</strong> <span id="detailsDeadline"></span></p>
+                <p><strong>Status:</strong> <span id="detailsStatus"></span></p>
+                <form id="applyForm" method="post" action="">
+                    {% csrf_token %}
+                    <button id = "applyBtn" type="submit" class="app-button">Register</button>
+                </form>
+            </section>
+        </div>
+    </main>
+</div>
+{% endblock %}

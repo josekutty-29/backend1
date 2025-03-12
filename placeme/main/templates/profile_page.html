@@ -1,0 +1,36 @@
+{# profile_page.html #}
+{% extends 'base.html' %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+
+<section id="profilePage" class="page">
+    <div class="profile-container">
+        <div class="profile-header">
+            <a href="{% url 'student_dashboard' %}" class="app-button-icon back-button" id="backButton">
+                <i class="material-icons">arrow_back</i>
+            </a>
+            <h2 class="profile-title">Profile</h2>
+        </div>
+        <div class="profile-details">
+            <div class="profile-detail-item">
+                <strong>Name:</strong> <span id="profileName">{{ user.first_name }} {{ user.last_name }}</span>
+            </div>
+            <div class="profile-detail-item">
+                <strong>Email:</strong> <span id="profileEmail">{{ user.email }}</span>
+            </div>
+
+            {% if profile %}
+            <div class="profile-detail-item">
+                <strong>CGPA:</strong> <span id="profileCGPA">{{ profile.marks.all.first.cgpa }}</span>
+            </div>
+            <div class="profile-detail-item">
+                <strong>Backlogs:</strong> <span id="profileBacklogs">{{ profile.marks.all.first.backlog }}</span>
+            </div>
+            {% else %}
+            <p>Please complete your profile.</p>
+            {% endif %}
+
+        </div>
+    </div>
+</section>
+{% endblock %}
