@@ -19,4 +19,8 @@ urlpatterns = [
     path("placementofficer/update/<int:offer_id>/", placement_offer_update, name="placement_update"),
     path("placementofficer/create/", placement_offer_create, name="placement_create"),
     path("export-marks/", export_marks_csv, name="export_marks_csv"),
+    path('remove-applied/<int:offer_id>/<int:user_id>/', remove_applied, name='remove_applied'),
+    path('student-profile/<int:user_id>/', student_profile, name='student_profile'),
+    path('user/profile/', user_profile, name='user_profile'),
+    path("export-applied-marks/", export_applied_students_marks, name="export_applied_students_marks"),
 ]

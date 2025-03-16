@@ -6,10 +6,11 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .forms import StudentRegistrationForm, TutorForm, PlacementOfferForm
+from .forms import StudentRegistrationForm, TutorForm, PlacementOfferForm, UserForm
 from django.contrib.auth import logout
 import csv
 from .models import Tutor, Student, PlacementOffer, Marks, PlacementOfficer
+from django.db.models import Q
 
 def signup(request):
     if request.method == "POST":
@@ -19,11 +20,13 @@ def signup(request):
         password = request.POST.get('password')
         first_name = request.POST.get('firstname')  # assuming your form uses 'firstname'
         last_name = request.POST.get('lastname')
+        reg_no = request.POST.get('reg_no')
         # Create the new user instance.
         new_user = User(
             email=email,
             first_name=first_name,
             last_name=last_name,
+            regno=reg_no
         )
         new_user.set_password(password)  # Hash the password
         try:
@@ -80,7 +83,15 @@ def student_dashboard(request):
         profile = Student.objects.get(user=request.user)
     except Student.DoesNotExist:
         profile = None
-    placements = PlacementOffer.objects.all()
+    try:
+        mark = Marks.objects.filter(reg_no=profile.reg_no).first()
+    except Marks.DoesNotExist:
+        mark = None
+    print(mark)
+    if mark:
+       placements = PlacementOffer.objects.filter(cgpa_required__lte=mark.cgpa)
+    else:   
+        placements = None
     context = {
         'user': request.user,
         'profile': profile,
@@ -123,19 +134,15 @@ def toggle_apply(request, offer_id):
     return JsonResponse({"error": "Invalid request"}, status=400)
 
 
-
-
 @login_required
 def tutor_dashboard(request):
     if request.method == "POST" and request.FILES.get("csv_file"):
         csv_file = request.FILES["csv_file"]
 
-        # Ensure the file is a CSV
         if not csv_file.name.endswith(".csv"):
             messages.error(request, "File is not a CSV format")
             return redirect("tutor_dashboard")
 
-        # Read and process the CSV file
         decoded_file = csv_file.read().decode("utf-8").splitlines()
         reader = csv.DictReader(decoded_file)
 
@@ -153,47 +160,53 @@ def tutor_dashboard(request):
                 messages.success(request, f"{student.user.first_name} {student.user.last_name}'s mark updated successfully")
             except Student.DoesNotExist:
                 messages.error(request, f"Student with register number {row['reg_no']} not found.")
-        return redirect("tutor_dashboard")  # Redirect back to tutor dashboard
+        return redirect("tutor_dashboard")
 
-    # Fetch tutor instance
     tutor_instance = get_object_or_404(Tutor, user=request.user)
-
-    # Get all students for this tutor
     students = Student.objects.filter(tutor=tutor_instance).exclude(reg_no__isnull=True)
 
     # Filtering logic
     sem_filter = request.GET.get("sem")
     backlog_filter = request.GET.get("backlog")
-    print(sem_filter,backlog_filter)
+    student_filter = request.GET.get("student_filter")  # New filter for student name or reg_no
+    student_sort = request.GET.get("student_sort")  # New sorting parameter
+
     if sem_filter and int(sem_filter) > 0:
-        print("filtering..")
         students = students.filter(semester=sem_filter)
     if backlog_filter:
         students = students.filter(marks__backlog=backlog_filter)
+    if student_filter:
+        students = students.filter(user__first_name__icontains=student_filter) | students.filter(reg_no__icontains=student_filter)
+    else:
+        student_filter=''
 
     # Sorting logic
-    sort_by = request.GET.get("sort")
-    print(sort_by)
-    if sort_by == "name":
+    if student_sort == "name":
         students = students.order_by("user__first_name")
-    elif sort_by == "semester":
-        students = students.order_by("semester")  # Descending CGPA
-    elif sort_by == "reg_no":
-        students = students.order_by("reg_no")  # Ascending Backlogs
+    elif student_sort == "-name":
+        students = students.order_by("-user__first_name")
+    elif student_sort == "regno":
+        students = students.order_by("reg_no")
+    elif student_sort == "-regno":
+        students = students.order_by("-reg_no")
+
     placements = PlacementOffer.objects.all()
     marks_dict = {student.reg_no: [] for student in students}
     for mark in Marks.objects.filter(reg_no__in=students):
         marks_dict[mark.reg_no.reg_no].append(mark)
 
-    print(students)
     context = {
         'user': request.user,
         'tutor': tutor_instance,
         'students': students,
         'placements': placements,
-        'marks_dict':marks_dict
+        'marks_dict': marks_dict,
+        'student_filter': student_filter,
+        'student_sort': student_sort
     }
     return render(request, 'tutor.html', context)
+
+
 
 
 @login_required
@@ -212,25 +225,175 @@ def export_marks_csv(request):
     return response
 
 
+import csv
+from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+from .models import PlacementOfficer, PlacementOffer, Student, Marks
+
+@login_required
+def export_applied_students_marks(request):
+    """Exports marks of all students who applied for the Placement Officer's offers."""
+    placement_officer = get_object_or_404(PlacementOfficer, user=request.user)
+    placement_offers = PlacementOffer.objects.filter(created_by=placement_officer)
+    applied_users = placement_offers.values_list("applied_by", flat=True).distinct()
+
+    # Get corresponding student profiles
+    applied_students = Student.objects.filter(user__in=applied_users)
+
+    # Prepare CSV response
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename=\"applied_students_marks.csv\"'
+
+    writer = csv.writer(response)
+    writer.writerow(["Reg No", "Name", "Semester", "CGPA", "Backlogs"])
+
+    # Write student data
+    for student in applied_students:
+        marks = Marks.objects.filter(reg_no=student).order_by("-sem")  # Get marks sorted by semester
+        if marks.exists():
+            for mark in marks:
+                writer.writerow([
+                    student.reg_no,
+                    f"{student.user.first_name} {student.user.last_name}",
+                    mark.sem,
+                    mark.cgpa,
+                    mark.backlog
+                ])
+        else:
+            # If no marks exist, write default values
+            writer.writerow([
+                student.reg_no,
+                f"{student.user.first_name} {student.user.last_name}",
+                "N/A",
+                "N/A",
+                "N/A"
+            ])
+
+    return response
+
+
+
+
 @login_required
 def placement_officer_dashboard(request):
     try:
         profile = PlacementOfficer.objects.get(user=request.user)
     except PlacementOfficer.DoesNotExist:
         profile = None
-    placement_officer = get_object_or_404(PlacementOfficer,user=request.user)
+    
+    placement_officer = get_object_or_404(PlacementOfficer, user=request.user)
     placements = PlacementOffer.objects.filter(created_by=placement_officer)
-    liked = [student for placement in placements for student in placement.liked_by.all()]
-    applied = [student for placement in placements for student in placement.applied_by.all()]
-    print(placements)
+    
+    # Get filter and sort parameters from request
+    liked_filter = request.GET.get('liked_filter', '')
+    liked_sort = request.GET.get('liked_sort', '')
+    applied_filter = request.GET.get('applied_filter', '')
+    applied_sort = request.GET.get('applied_sort', '')
+    
+    # Initialize dictionaries for liked and applied users
+    liked = {}
+    applied = {}
+
+    # Gather all users who liked or applied
+    for placement in placements:
+        # Get users who liked this placement
+        for user in placement.liked_by.all():
+            if user not in liked:
+                liked[user] = []
+            liked[user].append(placement)
+        
+        # Get users who applied to this placement
+        for user in placement.applied_by.all():
+            if user not in applied:
+                applied[user] = []
+            applied[user].append(placement)
+            
+    print(applied)
+    
+    # Filter liked users if a filter is provided
+    if liked_filter:
+        filtered_liked = {}
+        for user, user_placements in liked.items():
+            # Check various user attributes for the filter text
+            if (liked_filter.lower() in user.username.lower() or
+                liked_filter.lower() in user.first_name.lower() or
+                liked_filter.lower() in user.last_name.lower() or
+                liked_filter.lower() in user.email.lower() or
+                (hasattr(user, 'regno') and user.regno and liked_filter.lower() in user.regno.lower())):
+                filtered_liked[user] = user_placements
+        liked = filtered_liked
+    
+    # Filter applied users if a filter is provided
+    if applied_filter:
+        filtered_applied = {}
+        for user, user_placements in applied.items():
+            # Check various user attributes for the filter text
+            if (applied_filter.lower() in user.username.lower() or
+                applied_filter.lower() in user.first_name.lower() or
+                applied_filter.lower() in user.last_name.lower() or
+                applied_filter.lower() in user.email.lower() or
+                (hasattr(user, 'regno') and user.regno and applied_filter.lower() in user.regno.lower())):
+                filtered_applied[user] = user_placements
+        applied = filtered_applied
+    
+    # Sort the dictionaries
+    if liked_sort:
+        # Convert to list for sorting
+        liked_items = list(liked.items())
+        
+        # Apply sorting based on criteria
+        if liked_sort == 'name':
+            liked_items.sort(key=lambda x: (x[0].first_name.lower(), x[0].last_name.lower()))
+        elif liked_sort == '-name':
+            liked_items.sort(key=lambda x: (x[0].first_name.lower(), x[0].last_name.lower()), reverse=True)
+        elif liked_sort == 'email':
+            liked_items.sort(key=lambda x: x[0].email.lower())
+        elif liked_sort == '-email':
+            liked_items.sort(key=lambda x: x[0].email.lower(), reverse=True)
+        elif liked_sort == 'regno':
+            liked_items.sort(key=lambda x: x[0].regno if x[0].regno else '')
+        elif liked_sort == '-regno':
+            liked_items.sort(key=lambda x: x[0].regno if x[0].regno else '', reverse=True)
+        
+        # Convert back to dictionary
+        liked = dict(liked_items)
+    
+    # Same sorting logic for applied users
+    if applied_sort:
+        # Convert to list for sorting
+        applied_items = list(applied.items())
+        
+        # Apply sorting based on criteria
+        if applied_sort == 'name':
+            applied_items.sort(key=lambda x: (x[0].first_name.lower(), x[0].last_name.lower()))
+        elif applied_sort == '-name':
+            applied_items.sort(key=lambda x: (x[0].first_name.lower(), x[0].last_name.lower()), reverse=True)
+        elif applied_sort == 'email':
+            applied_items.sort(key=lambda x: x[0].email.lower())
+        elif applied_sort == '-email':
+            applied_items.sort(key=lambda x: x[0].email.lower(), reverse=True)
+        elif applied_sort == 'regno':
+            applied_items.sort(key=lambda x: x[0].regno if x[0].regno else '')
+        elif applied_sort == '-regno':
+            applied_items.sort(key=lambda x: x[0].regno if x[0].regno else '', reverse=True)
+        
+        # Convert back to dictionary
+        applied = dict(applied_items)
+    
     context = {
-        'user': request.user,
         'profile': profile,
         'placements': placements,
-        "liked_students": liked,
-        "applied_students":applied,
+        'liked': liked,
+        'applied': applied,
+        'liked_filter': liked_filter,
+        'liked_sort': liked_sort,
+        'applied_filter': applied_filter,
+        'applied_sort': applied_sort,
     }
+    
     return render(request, 'placement_officer.html', context)
+
 
 
 @login_required
@@ -277,6 +440,8 @@ def placement_offer_delete(request,offer_id):
         messages.success(request,"Deleted successfully")
     return redirect('placement_officer')
 
+
+
 @login_required
 def student_detail(request, student_id):
     # Get the student object for the current tutor, or 404 if not found
@@ -287,6 +452,9 @@ def student_detail(request, student_id):
         'form': form,
     }
     return render(request, 'student_form.html', context)
+
+
+
 
 @login_required
 def tutor_form(request):
@@ -299,6 +467,8 @@ def tutor_form(request):
     else:
         form = TutorForm(instance=tutor)  # Prefill the form for editing
     return render(request, "tutor_form.html", {"form": form, "tutor": tutor})
+
+
 
 
 @login_required
@@ -351,6 +521,9 @@ def student_register(request):
 
     return render(request, 'student_form.html', {'form': form})
 
+
+
+
 @login_required
 def student_update(request, reg_no):
     student = Student.objects.filter(reg_no=reg_no).first()
@@ -371,3 +544,41 @@ def student_update(request, reg_no):
         form = StudentRegistrationForm(instance=student)
 
     return render(request, 'student_update.html', {'form': form, 'reg_no': reg_no})
+
+
+
+@login_required
+def remove_applied(request, offer_id, user_id):
+    """Remove a user's application for a placement offer."""
+    placement = get_object_or_404(PlacementOffer, offer_id=offer_id)
+    user = get_object_or_404(User, id=user_id)
+
+    if user in placement.applied_by.all():
+        placement.applied_by.remove(user)
+
+    return redirect(request.META.get("HTTP_REFERER", "placement_officer_dashboard"))
+
+
+
+@login_required
+def student_profile(request, user_id):
+    """Display the profile of a student."""
+    student = get_object_or_404(User, id=user_id)
+    return render(request, "student_profile.html", {"student": student})
+
+
+
+@login_required
+def user_profile(request):
+    """Display and update the user's profile on the same page."""
+    user = request.user
+
+    if request.method == "POST":
+        form = UserForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            return redirect("user_profile")  # Redirect after successful update
+    else:
+        form = UserForm(instance=user)
+
+    return render(request, "user_profile.html", {"form": form, "user": user})

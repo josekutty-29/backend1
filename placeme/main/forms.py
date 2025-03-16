@@ -1,5 +1,22 @@
 from django import forms
-from .models import Student,Tutor, PlacementOffer
+from .models import Student,Tutor, PlacementOffer,User
+
+class UserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email", "regno", "role"]  # Added first_name & last_name
+        widgets = {
+            "first_name": forms.TextInput(attrs={"class": "form-control"}),
+            "last_name": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+            "regno": forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}),  # Read-only
+            "role": forms.Select(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({"class": "form-control"})
 
 class StudentRegistrationForm(forms.ModelForm):
     class Meta:
