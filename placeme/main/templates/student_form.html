@@ -17,7 +17,11 @@
             </div>
         {% endif %}
         {{ form.as_p }}
-        <button type="submit">Register</button>
+        
+        <!-- Determine if it's an update or a new registration -->
+        <button type="submit">
+            {% if form.instance.pk and form.instance.user.first_name %}Update{% else %}Register{% endif %}
+        </button>
     </form>
     <script src="{% static 'student_form.js' %}"></script>
 </body>

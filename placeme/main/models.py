@@ -2,27 +2,32 @@ from django.db import models
 from django.conf import settings
 from django.db import models
 from django.contrib.auth import get_user_model
-
-
-
-
-
 from django.contrib.auth.models import AbstractUser
-
-
-
+from django.contrib.auth.models import AbstractUser
+from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from datetime import datetime
+import uuid
+import hashlib
 
 class User(AbstractUser):
-    # Additional custom fields
-    regno = models.CharField(max_length=20, blank=True, null=True)
-    role = models.CharField(max_length=20, default='student')
-    
-    # Explicitly define the username field with a default value
+    class Role(models.TextChoices):
+        STUDENT = "student", "Student"
+        ADMIN = "admin", "Admin"
+        PLACEMENT_OFFICER = "placement_officer", "Placement Officer"
+        TUTOR = "tutor", "Tutor"
+
+    regno = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.STUDENT
+    )
+
     username = models.CharField(
         max_length=150,
         unique=True,
@@ -31,23 +36,28 @@ class User(AbstractUser):
     )
 
     def save(self, *args, **kwargs):
-        # If username is empty, set it to the email
+        if not self.regno:
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")  # YYYYMMDDHHMMSS
+            unique_id = str(uuid.uuid4().hex[:6]).upper()  
+            raw_regno = f"REG{timestamp}{unique_id}"  
+            self.regno = hashlib.sha256(raw_regno.encode()).hexdigest()[:20]
+
         if not self.username:
             self.username = self.email
+
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.email
+        return f"{self.email} ({self.regno})"
 
     class Meta:
-        db_table = 'main_user'  # Use a name that matches your database
+        db_table = "main_user"
 
 
 
 
 class AuthGroup(models.Model):
     name = models.CharField(unique=True, max_length=150)
-
     class Meta:
         managed = False
         db_table = 'auth_group'
@@ -207,24 +217,75 @@ class Marks(models.Model):
     def __str__(self):
         return f"{self.reg_no} - Semester {self.sem}"
 
+class PlacementOfficer(models.Model):
+    """Placement Officer Model"""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # One officer per user
+
+    def __str__(self):
+        return f"Placement Officer: {self.user.username}"
 
 
 class PlacementOffer(models.Model):
-    """Placement Offer Table"""
-
+    """Placement Offer Model"""
     offer_id = models.AutoField(primary_key=True)
     company_name = models.CharField(max_length=255)
     cgpa_required = models.DecimalField(max_digits=4, decimal_places=2)
-    no_of_backpapers = models.PositiveIntegerField(default=0) # Default backpapers
-    salary = models.DecimalField(max_digits=12, decimal_places=2)  # Adjust digits as required
-    description = models.TextField(blank=True, null=True) # Can be empty
-    skillset = models.TextField(blank=True, null=True) # Can be empty
+    no_of_backpapers = models.PositiveIntegerField(default=0)
+    salary = models.DecimalField(max_digits=12, decimal_places=2)
+    description = models.TextField(blank=True, null=True)
+    skillset = models.TextField(blank=True, null=True)
     contact_email = models.EmailField()
     posted_date = models.DateField()
     final_date = models.DateField()
+    liked_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="liked_placements", blank=True)
+    applied_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="applied_placements", blank=True)
+    created_by = models.ForeignKey(PlacementOfficer, on_delete=models.CASCADE, related_name="offers_created")
 
     def __str__(self):
-        return self.company_name
+        return f"{self.company_name} (Managed by {self.created_by.user.username})"
+
+
+    # Method to check if a PlacementOfficer is authorized to modify this offer
+    def is_managed_by(self, officer):
+        return self.created_by == officer
+
+
+    # Remove Like (Only if Officer Owns This Offer)
+    def remove_like(self, officer, student):
+        if not self.is_managed_by(officer):
+            return "You are not authorized to manage this offer!"
+        
+        if student in self.liked_by.all():
+            self.liked_by.remove(student)
+            self.save()
+            return f"{student.username}'s like removed from {self.company_name}"
+        return f"{student.username} has not liked {self.company_name}"
+
+
+    # Add Applicant (Only if Officer Owns This Offer)
+    def add_applicant(self, officer, student):
+        if not self.is_managed_by(officer):
+            return "You are not authorized to manage this offer!"
+        
+        if student not in self.applied_by.all():
+            self.applied_by.add(student)
+            self.save()
+            return f"{student.username} applied for {self.company_name}"
+        return f"{student.username} has already applied for {self.company_name}"
+
+
+    # Remove Applicant (Only if Officer Owns This Offer)
+    def remove_applicant(self, officer, student):
+        if not self.is_managed_by(officer):
+            return "You are not authorized to manage this offer!"
+        
+        if student in self.applied_by.all():
+            self.applied_by.remove(student)
+            self.save()
+            return f"{student.username} removed from {self.company_name} applications"
+        return f"{student.username} has not applied for {self.company_name}"
+
+
 
 class Application(models.Model):
     """Application Table"""
