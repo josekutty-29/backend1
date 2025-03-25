@@ -69,6 +69,9 @@
         .a{
             max-height:fit-content;
         }
+        .form-select{
+            width:fit-content;
+        }
         
         
         
@@ -144,9 +147,15 @@
             </header>
             <div class="page-content">
                 <div class="student-actions">                          
-                    <a href="{% url 'export_applied_students_marks' %}" class="btn btn-success mb-3">
+                    <button id="export-btn" class="btn btn-success mb-3">
                         Export Applied Students' Marks
-                    </a>                    
+                    </button>   
+                    <select id="students-dropdown" class="form-select col-5 mt-2" style="display: none;">
+                        <option value="">Select a Company</option>
+                        {% for placement in placements %}
+                            <option value="{% url 'export_applied_students_marks' placement.offer_id %}">{{ placement.company_name }}</option>
+                        {% endfor %}
+                    </select>                    
                 </div>
                 <!-- Placements Page (Tutor) -->
                 <section id="placementsPage" class="page">
@@ -454,6 +463,34 @@
             <script>
                 document.addEventListener("DOMContentLoaded", function () {
                     console.log("DOM Loaded");
+                    document.getElementById("export-btn").addEventListener("click", function() {
+                        let dropdown = document.getElementById("students-dropdown");
+                        
+                    
+                        this.style.display = "none"; // Hide button
+                        dropdown.style.display = "block"; // Show dropdown
+                        dropdown.focus(); // Auto-focus on dropdown
+                    });
+                    
+                    // Hide dropdown and show button again when an option is selected
+                    document.getElementById("students-dropdown").addEventListener("change", function() {
+                        if (this.value) {
+                            this.style.display = "none"; // Hide dropdown
+                            window.location.href = this.value; // Redirect to selected company page
+                            document.getElementById("export-btn").style.display = "block"; // Show button again
+                        }
+                    });
+                    
+                    // Hide dropdown if user clicks anywhere else on the page
+                    document.addEventListener("click", function(event) {
+                        let dropdown = document.getElementById("students-dropdown");
+                        let button = document.getElementById("export-btn");
+                    
+                        if (dropdown.style.display === "block" && event.target !== dropdown && event.target !== button) {
+                            dropdown.style.display = "none"; // Hide dropdown
+                            button.style.display = "block"; // Show button again
+                        }
+                    });
             
                     // Theme Toggle
                     const themeToggle = document.getElementById('themeToggle');

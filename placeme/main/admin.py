@@ -8,5 +8,8 @@ admin.site.register(Marks)
 admin.site.register(PlacementOffer)
 admin.site.register(Application)
 admin.site.register(PlacementOfficer)
+admin.site.register(Department)
+admin.site.register(Notification)
+admin.site.register(TutorApproval)
 
 # Register your models here.

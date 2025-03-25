@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from datetime import datetime
+from django.utils.timezone import now
 import uuid
 import hashlib
 
@@ -48,6 +49,16 @@ class User(AbstractUser):
         db_table = "main_user"
 
 
+class Department(models.Model):
+    """Department Table"""
+    name = models.CharField(max_length=100, unique=True)  # Department name
+    code = models.CharField(max_length=10, unique=True)  # Short code like 'CSE', 'ECE'
+    head = models.CharField(max_length=100, blank=True, null=True)  # Head of the department
+    contact_email = models.EmailField(blank=True, null=True)  # Department email
+    description = models.TextField(blank=True, null=True)  # Optional description
+
+    def __str__(self):
+        return self.name
 
 
 class AuthGroup(models.Model):
@@ -169,7 +180,7 @@ class Tutor(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
     tutor_id = models.AutoField(primary_key=True)
     tutor_name = models.CharField(max_length=255)
-    department = models.CharField(max_length=100) # Tutor's department
+    department = models.ForeignKey(Department,on_delete=models.CASCADE,default=1) # Tutor's department
     semester = models.PositiveIntegerField()       # Semester they tutor for
     division = models.CharField(max_length=50)       # Division they handle
 
@@ -178,13 +189,14 @@ class Tutor(models.Model):
 
 User = get_user_model()
 
+
 class Student(models.Model):
     """Student Table"""
 
     reg_no = models.CharField(max_length=20, primary_key=True)  # Student Registration Number as PK
     # Change this field from ForeignKey to OneToOneField
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='student_profile')
-    department = models.CharField(max_length=100)
+    department = models.ForeignKey(Department,on_delete=models.CASCADE,related_name='students_dept',default=1)
     semester = models.PositiveIntegerField()
     date_of_birth = models.DateField(blank=True, null=True)
     batch = models.CharField(max_length=20)
@@ -231,6 +243,8 @@ class PlacementOffer(models.Model):
     contact_email = models.EmailField()
     posted_date = models.DateField()
     final_date = models.DateField()
+    sem = models.IntegerField(default=6,blank=False)
+    department = models.ForeignKey(Department,on_delete=models.CASCADE,default=1)
     liked_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="liked_placements", blank=True)
     applied_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="applied_placements", blank=True)
     created_by = models.ForeignKey(PlacementOfficer, on_delete=models.CASCADE, related_name="offers_created")
@@ -295,3 +309,14 @@ class Application(models.Model):
 
 
 
+class Notification(models.Model):
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_notifications", blank=False)
+    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_notifications", blank=False)
+    message = models.TextField()
+    status = models.BooleanField(default=False)
+    date = models.DateField(default=now)
+    
+class TutorApproval(models.Model):
+    tid = models.AutoField(primary_key=True)
+    nid = models.ForeignKey(Notification, on_delete=models.CASCADE)
+    confirm = models.BooleanField(default=False)

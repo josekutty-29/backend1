@@ -64,6 +64,8 @@ class PlacementOfferForm(forms.ModelForm):
             "contact_email",
             "posted_date",
             "final_date",
+            "department",
+            "sem"
         ]
         widgets = {
             "posted_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),

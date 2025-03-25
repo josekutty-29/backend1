@@ -30,6 +30,13 @@
             document.documentElement.classList.add(savedTheme === 'light' ? 'theme-light' : 'theme-dark');
         })();
     </script>
+    <style>
+        ul {
+            list-style-type: none; /* Removes the bullet points */
+            padding: 0; /* Removes default padding */
+            margin: 0; /* Removes default margin */
+        }           
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -116,17 +123,28 @@
                                         <p class="card-text"><strong>Salary:</strong> ₹{{ placement.salary }} per annum</p>
                                         <p class="card-text"><strong>Skills Required:</strong> {{ placement.skillset|default:"N/A" }}</p>
                                         <p class="card-text"><strong>Apply Before:</strong> {{ placement.final_date }}</p>
-                
-                                        <button class="btn apply-btn mt-2" data-placement-id="{{ placement.offer_id }}"
+
+                                        {% if user in placement.applied_by.all %}
+                                            <button class="btn apply-btn mt-2" data-placement-id="{{ placement.offer_id }}"/"
+                                                {% if user in placement.applied_by.all %}
+                                                    style="background-color: green; color: white;"
+                                                {% else %}
+                                                    style="background-color: gray; color: white;"
+                                                {% endif %}>
+                                                {% if user in placement.applied_by.all %}Applied{% else %}Apply{% endif %}
+                                            </button>
+                                        {% else %}
+                                        <a class="btn apply-btn mt-2" href="/student_apply_register/{{placement.offer_id}}/"
                                             {% if user in placement.applied_by.all %}
                                                 style="background-color: green; color: white;"
                                             {% else %}
                                                 style="background-color: gray; color: white;"
                                             {% endif %}>
                                             {% if user in placement.applied_by.all %}Applied{% else %}Apply{% endif %}
-                                        </button>
+                                        </a>
+                                        {% endif %}
                 
-                                        <button class="btn btn-light like-btn" data-placement-id="{{ placement.offer_id }}">
+                                        <button class="btn btn-light like-btn"  data-placement-id="{{ placement.offer_id }}" >
                                             {% if user in placement.liked_by.all %}
                                                 <i class="fa-solid fa-heart text-danger"></i>
                                             {% else %}
@@ -140,6 +158,20 @@
                             <div class="col-12">
                                 <div class="alert alert-info">No placement offers available at the moment.</div>
                             </div>
+                            {% if messages %}
+                            <ul>
+                                {% for message in messages %}
+                                    {% if message.tags == "warning" %}
+                                        <li>
+                                            <div class="col-12">
+                                                <div class="alert alert-info">{{ message }}</div>
+                                            </div>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        
                         {% endfor %}
                     </div>
                 </section>
@@ -246,11 +278,16 @@
                             }
                         });
                     });
+                    
                 });
-                document.querySelectorAll(".apply-btn").forEach(button => {
-                    button.addEventListener("click", function () {
-                        let offerId = this.getAttribute("data-placement-id");
+                document.querySelectorAll("button.apply-btn").forEach(button => {
+                    button.addEventListener('click',function (){
+                        let con = confirm("You want to remove from the applied")
+                        if(!con) 
+                            return 
 
+                        let offerId = this.getAttribute("data-placement-id");
+                        console.log("offerId",offerId)
                         fetch(`/apply-placement/${offerId}/`, {
                             method: "POST",
                             headers: {
@@ -264,14 +301,16 @@
                             if (data.applied) {
                                 button.style.backgroundColor = "green";
                                 button.innerText = "Applied";
+                                
                             } else {
                                 button.style.backgroundColor = "gray";
                                 button.innerText = "Apply";
+                                location.reload(true);
                             }
                         });
-                    });
-                });
-
+                    })
+                })
+                
                 const filterButtons = document.querySelectorAll(".filter-button");
                 const placementCards = document.querySelectorAll(".placement-card");
 

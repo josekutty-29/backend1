@@ -9,7 +9,7 @@ from django.contrib import messages
 from .forms import StudentRegistrationForm, TutorForm, PlacementOfferForm, UserForm
 from django.contrib.auth import logout
 import csv
-from .models import Tutor, Student, PlacementOffer, Marks, PlacementOfficer
+from .models import Tutor, Student, PlacementOffer, Marks, PlacementOfficer, Department,Notification,TutorApproval
 from django.db.models import Q
 
 def signup(request):
@@ -88,8 +88,10 @@ def student_dashboard(request):
     except Marks.DoesNotExist:
         mark = None
     print(mark)
+    if not mark:
+        messages.warning(request,"Your tutor didnt update your mark...")
     if mark:
-       placements = PlacementOffer.objects.filter(cgpa_required__lte=mark.cgpa)
+       placements = PlacementOffer.objects.filter(cgpa_required__lte=mark.cgpa,sem = profile.semester,department = profile.department)
     else:   
         placements = None
     context = {
@@ -192,6 +194,8 @@ def tutor_dashboard(request):
 
     placements = PlacementOffer.objects.all()
     marks_dict = {student.reg_no: [] for student in students}
+    notification = Notification.objects.filter(receiver = request.user)
+    tutor_approvals = [TutorApproval.objects.filter(nid = x) for x in notification]
     for mark in Marks.objects.filter(reg_no__in=students):
         marks_dict[mark.reg_no.reg_no].append(mark)
 
@@ -202,7 +206,8 @@ def tutor_dashboard(request):
         'placements': placements,
         'marks_dict': marks_dict,
         'student_filter': student_filter,
-        'student_sort': student_sort
+        'student_sort': student_sort,
+        'tutor_approvals':tutor_approvals
     }
     return render(request, 'tutor.html', context)
 
@@ -225,17 +230,12 @@ def export_marks_csv(request):
     return response
 
 
-import csv
-from django.http import HttpResponse
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404
-from .models import PlacementOfficer, PlacementOffer, Student, Marks
-
 @login_required
-def export_applied_students_marks(request):
+def export_applied_students_marks(request,offer_id):
+    print(offer_id)
     """Exports marks of all students who applied for the Placement Officer's offers."""
     placement_officer = get_object_or_404(PlacementOfficer, user=request.user)
-    placement_offers = PlacementOffer.objects.filter(created_by=placement_officer)
+    placement_offers = PlacementOffer.objects.filter(created_by=placement_officer,offer_id = offer_id)
     applied_users = placement_offers.values_list("applied_by", flat=True).distinct()
 
     # Get corresponding student profiles
@@ -506,6 +506,15 @@ def student_register(request):
             profile = form.save(commit=False)
             profile.user = request.user  # Ensure it's linked to the logged-in user
             profile.reg_no = request.user.regno  # Ensure reg_no remains correct
+            tutor = profile.tutor
+            profile.tutor = None
+            notification = Notification(
+                sender = request.user,
+                receiver = tutor.user,
+                message = "New Student registeration "
+            )
+            notification.save()
+            TutorApproval(nid = notification).save()
             profile.save()
             messages.success(request, "Profile updated successfully!")
             return redirect('student_dashboard')
@@ -520,6 +529,41 @@ def student_register(request):
             form = StudentRegistrationForm(initial = {'reg_no':request.user.regno})
 
     return render(request, 'student_form.html', {'form': form})
+
+
+
+@login_required
+def student_apply_register(request,pid):
+    print(request.user.regno)
+    placement = PlacementOffer.objects.get(offer_id = pid)
+    print(placement.offer_id)
+    try:
+        # Try to get the student profile for the logged-in user
+        profile = Student.objects.get(reg_no=request.user.regno)
+    except Student.DoesNotExist:
+        profile = None  # No profile exists yet
+    print(profile,request.method)
+
+    if request.method == 'POST':
+        form = StudentRegistrationForm(request.POST, instance=profile)  # Preload data
+        if form.is_valid():
+            profile = form.save(commit=False)
+            profile.user = request.user  # Ensure it's linked to the logged-in user
+            profile.reg_no = request.user.regno  # Ensure reg_no remains correct
+            profile.save()
+            messages.success(request, "Profile updated successfully!")
+            return redirect('student_dashboard')
+        else:
+            messages.error(request, form.errors)
+    else:
+        print("get...")
+        if profile:
+            form = StudentRegistrationForm(instance=profile)  # Load existing data into form
+        else:
+            print("else...")
+            form = StudentRegistrationForm(initial = {'reg_no':request.user.regno})
+
+    return render(request, 'student_form.html', {'form': form, 'placement':placement})
 
 
 
@@ -582,3 +626,15 @@ def user_profile(request):
         form = UserForm(instance=user)
 
     return render(request, "user_profile.html", {"form": form, "user": user})
+
+@login_required
+def confirm_approval(request,id):
+    tutor = Tutor.objects.get(user = request.user)
+    tutor_approval = TutorApproval.objects.get(tid = id)
+    notification = tutor_approval.nid
+    student = Student.objects.get(user = notification.sender)
+    student.tutor = tutor
+    student.save()
+    tutor_approval.confirm=True
+    tutor_approval.save()
+    return redirect('tutor_dashboard')

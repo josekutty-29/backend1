@@ -8,6 +8,7 @@ urlpatterns = [
     path('student/',student_dashboard, name="student"),
     path('tutor/',tutor_dashboard, name="tutor"),
     path('student_register/',student_register,name="student_register"),
+    path('student_apply_register/<int:pid>/',student_apply_register,name="student_apply_register"),
     path('student_update/<str:reg_no>/', student_update, name='student_update'),
     path('like-placement/<int:offer_id>/', toggle_like, name='toggle_like'),
     path('apply-placement/<int:offer_id>/', toggle_apply, name='toggle_apply'),
@@ -22,5 +23,6 @@ urlpatterns = [
     path('remove-applied/<int:offer_id>/<int:user_id>/', remove_applied, name='remove_applied'),
     path('student-profile/<int:user_id>/', student_profile, name='student_profile'),
     path('user/profile/', user_profile, name='user_profile'),
-    path("export-applied-marks/", export_applied_students_marks, name="export_applied_students_marks"),
+    path("export-applied-marks/<int:offer_id>", export_applied_students_marks, name="export_applied_students_marks"),
+    path("confirm_approval/<int:id>", confirm_approval, name="confirm_approval"),
 ]
