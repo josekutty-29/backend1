@@ -27,8 +27,12 @@
 </head>
 <body>
     <div class="d-flex flex-direction-column col-12 overflow-y-scroll">
-        
-        <form method="post" action="{% url 'student_register' %}" class="col-12">
+        {% if flag %}
+        <form method="post" action="{% url 'student_register' flag %}" class="col-12">
+        {% else %}
+        <form method="post" action="{% url 'student_register' 2 %}" class="col-12">
+        {% endif %}
+       
             {% csrf_token %}
             <h2>Student Registration {% if not details %}
                 form

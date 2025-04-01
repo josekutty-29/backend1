@@ -40,7 +40,7 @@ def signup(request):
             login(request, new_user)
             messages.success(request, "Signup successful!")
             # Redirect to student_register view after successful signup
-            return redirect('student_register')
+            return redirect('student_register',1)
         except Exception as e:
             print("Error saving user:", e)
             messages.error(request, "Error during signup: " + str(e))
@@ -521,7 +521,7 @@ def logout_view(request):
 
 
 @login_required
-def student_register(request):
+def student_register(request,flag):
     print(request.user.regno)
     try:
         # Try to get the student profile for the logged-in user
@@ -538,6 +538,8 @@ def student_register(request):
             profile.user = request.user  # Ensure it's linked to the logged-in user
             profile.reg_no = request.user.regno  # Ensure reg_no remains correct
             tutor = profile.tutor
+            if flag == 1:
+                profile.tutor = None
             if not copy:
                 notification = Notification(
                     sender = request.user,
@@ -560,7 +562,7 @@ def student_register(request):
             print("else...")
             form = StudentRegistrationForm(initial = {'reg_no':request.user.regno})
 
-    return render(request, 'student_form.html', {'form': form})
+    return render(request, 'student_form.html', {'form': form,'flag':flag})
 
 
 
