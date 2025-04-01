@@ -11,5 +11,6 @@ admin.site.register(PlacementOfficer)
 admin.site.register(Department)
 admin.site.register(Notification)
 admin.site.register(TutorApproval)
+admin.site.register(PlacementApproval)
 
 # Register your models here.

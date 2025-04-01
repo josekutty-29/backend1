@@ -25,4 +25,5 @@ urlpatterns = [
     path('user/profile/', user_profile, name='user_profile'),
     path("export-applied-marks/<int:offer_id>", export_applied_students_marks, name="export_applied_students_marks"),
     path("confirm_approval/<int:id>", confirm_approval, name="confirm_approval"),
+    path("accept_applied/<int:offer_id>/<int:user_id>",accept_applied,name="accept_applied")
 ]

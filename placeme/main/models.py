@@ -248,6 +248,7 @@ class PlacementOffer(models.Model):
     liked_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="liked_placements", blank=True)
     applied_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="applied_placements", blank=True)
     created_by = models.ForeignKey(PlacementOfficer, on_delete=models.CASCADE, related_name="offers_created")
+    accepted = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='accepted_students',blank=True)
 
     def __str__(self):
         return f"{self.company_name} (Managed by {self.created_by.user.username})"
@@ -320,3 +321,9 @@ class TutorApproval(models.Model):
     tid = models.AutoField(primary_key=True)
     nid = models.ForeignKey(Notification, on_delete=models.CASCADE)
     confirm = models.BooleanField(default=False)
+    
+class PlacementApproval(models.Model):
+    pid = models.AutoField(primary_key=True)
+    nid = models.ForeignKey(Notification, on_delete=models.CASCADE,related_name="placement_notification")
+    placement = models.ForeignKey(PlacementOffer,on_delete=models.CASCADE,related_name="placement_details")
+    student = models.ForeignKey(Student,on_delete=models.CASCADE,related_name="placement_student_notification",default=1)

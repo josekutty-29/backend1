@@ -327,35 +327,50 @@
                                         </thead>
                                         <tbody>
                                             {% if applied %}
-                                                {% for user, placements in applied.items %}
-                                                    {% for placement in placements %}
-                                                        <tr>
-                                                            <td>{{ user.get_full_name|default:user.username }}</td>
-                                                            <td>{{ user.email }}</td>
-                                                            <td>{% if user.regno %}{{ user.regno }}{% else %}-{% endif %}</td>
-                                                            <td>{% if user.student_profile %}{{ user.student_profile.department }}{% else %}-{% endif %}</td>
-                                                            <td>{% if user.student_profile %}{{ user.student_profile.semester }}{% else %}-{% endif %}</td>
-                                                            <td>{{ placement.company_name }}</td>
-                                                            <td>{{ placement.salary }}</td>
-                                                            <td>
-                                                                <div class="d-flex flex-direction-row ">
-                                                                    <a href="{% url 'student_profile' user.id %}" class="btn btn-sm btn-outline-primary m-2">
-                                                                        View Profile
+                                            {% for user, placements in applied.items %}
+                                                {% for placement in placements %}
+                                                    <tr>
+                                                        <td>{{ user.get_full_name|default:user.username }}</td>
+                                                        <td>{{ user.email }}</td>
+                                                        <td>{% if user.regno %}{{ user.regno }}{% else %}-{% endif %}</td>
+                                                        <td>{% if user.student_profile %}{{ user.student_profile.department }}{% else %}-{% endif %}</td>
+                                                        <td>{% if user.student_profile %}{{ user.student_profile.semester }}{% else %}-{% endif %}</td>
+                                                        <td>{{ placement.company_name }}</td>
+                                                        <td>{{ placement.salary }}</td>
+                                                        <td>
+                                                            <div class="d-flex flex-direction-row">
+                                                                <a href="{% url 'student_profile' user.id %}" class="btn btn-sm btn-outline-primary m-2">
+                                                                    View Profile
+                                                                </a>
+                                                                
+                                                                {% if user in placement.applied_by.all %}
+                                                                
+                                                                    <!-- If the student has already applied, show "Accepted" button -->
+                                                                    <a href="" class="btn btn-sm btn-outline-success m-2" disabled>
+                                                                        Accepted
                                                                     </a>
+                                                                {% else %}
                                                                     <a href="{% url 'remove_applied' offer_id=placement.offer_id user_id=user.id %}" 
-                                                                       class="btn btn-sm btn-outline-danger m-2">
+                                                                        class="btn btn-sm btn-outline-danger m-2">
                                                                         Remove
                                                                     </a>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    {% endfor %}
+                                                                    <!-- If the student hasn't applied, show the "Accept" button -->
+                                                                    <a href="{% url 'accept_applied' offer_id=placement.offer_id user_id=user.id %}" 
+                                                                        class="btn btn-sm btn-outline-primary m-2">
+                                                                        Accept
+                                                                    </a>
+                                                                {% endif %}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
                                                 {% endfor %}
+                                            {% endfor %}
                                             {% else %}
-                                                <tr>
-                                                    <td colspan="8" class="text-center text-muted">No users have applied to your placement offers yet.</td>
-                                                </tr>
+                                            <tr>
+                                                <td colspan="8" class="text-center text-muted">No users have applied to your placement offers yet.</td>
+                                            </tr>
                                             {% endif %}
+
                                         </tbody>
                                     </table>                                    
                                     <script>

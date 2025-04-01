@@ -125,7 +125,7 @@
                                         <p class="card-text"><strong>Apply Before:</strong> {{ placement.final_date }}</p>
 
                                         {% if user in placement.applied_by.all %}
-                                            <button class="btn apply-btn mt-2" data-placement-id="{{ placement.offer_id }}"/"
+                                            <button class="btn apply-btn mt-2" data-placement-id="{{ placement.offer_id }}"
                                                 {% if user in placement.applied_by.all %}
                                                     style="background-color: green; color: white;"
                                                 {% else %}
@@ -183,7 +183,35 @@
                 <!-- Notifications Page -->
                 <section id="notificationsPage" class="page">
                     <h1 class="page-title">Notifications</h1>
-                    <ul class="notification-list" id="notificationList"></ul>
+                    <ul class="notification-list" id="notificationList">
+                        {% if notifications %}
+                        <div class="container mt-3">
+                            <h4 class="mb-3">Notifications</h4>
+                            <div class="list-group">
+                                {% for notification in notifications %}
+                                    
+                                    <div class="list-group-item d-flex justify-content-between align-items-center 
+                                                {% if not approval.confirm %} bg-light {% endif %}">
+                                        <div>
+                                            <strong>{{ notification.nid.sender.username }}</strong> sent a request:
+                                            <p class="mb-1">{{ notification.nid.message }}</p>
+                                            <small class="text-muted">{{ notification.nid.date }}</small>
+                                        </div>
+                                        <div>
+                                            {% if notification.placement.company_name %}
+                                                placed at {{notification.placement.company_name}}                                        
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="col-12">
+                            <div class="alert alert-info">No notifications for you.</div>
+                        </div>
+                        {% endif %}
+                    </ul>
                 </section>
 
                 <!-- Student Profile Page -->
@@ -254,6 +282,26 @@
                 }
             }
             document.addEventListener("DOMContentLoaded", function () {
+                const navButtons = document.querySelectorAll('.nav-button');
+                const pages = document.querySelectorAll('.page');
+            
+                navButtons.forEach(button => {
+                    button.addEventListener('click', function () {
+                        const targetPage = this.getAttribute('data-page');
+                        
+                        // Remove active class from all buttons
+                        navButtons.forEach(btn => btn.classList.remove('active'));
+                        
+                        // Add active class to clicked button
+                        this.classList.add('active');
+                        
+                        // Remove active-page class from all pages
+                        pages.forEach(page => page.classList.remove('active-page'));
+                        
+                        // Add active-page class to the target page
+                        document.getElementById(targetPage).classList.add('active-page');
+                    });
+                });
                 document.querySelectorAll(".like-btn").forEach(button => {
                     button.addEventListener("click", function () {
                         let offerId = this.getAttribute("data-placement-id");

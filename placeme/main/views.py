@@ -9,7 +9,7 @@ from django.contrib import messages
 from .forms import StudentRegistrationForm, TutorForm, PlacementOfferForm, UserForm
 from django.contrib.auth import logout
 import csv
-from .models import Tutor, Student, PlacementOffer, Marks, PlacementOfficer, Department,Notification,TutorApproval
+from .models import Tutor, Student, PlacementOffer, Marks, PlacementOfficer,Notification,TutorApproval,PlacementApproval
 from django.db.models import Q
 
 def signup(request):
@@ -79,8 +79,10 @@ def login_view(request):
 
 @login_required
 def student_dashboard(request):
+    placement_approval = None
     try:
         profile = Student.objects.get(user=request.user)
+        placement_approval= PlacementApproval.objects.filter(student = profile)
     except Student.DoesNotExist:
         profile = None
     try:
@@ -97,7 +99,8 @@ def student_dashboard(request):
     context = {
         'user': request.user,
         'profile': profile,
-        'placements': placements
+        'placements': placements,
+        'notifications':placement_approval
     }
     return render(request, 'student.html', context)
 
@@ -294,6 +297,7 @@ def placement_officer_dashboard(request):
     # Initialize dictionaries for liked and applied users
     liked = {}
     applied = {}
+    accepted = {}
 
     # Gather all users who liked or applied
     for placement in placements:
@@ -308,6 +312,11 @@ def placement_officer_dashboard(request):
             if user not in applied:
                 applied[user] = []
             applied[user].append(placement)
+        
+        for user in placement.accepted.all():
+            if user not in accepted:
+                accepted[user] = []
+            accepted[user].append(placement)
             
     print(applied)
     
@@ -395,6 +404,23 @@ def placement_officer_dashboard(request):
     return render(request, 'placement_officer.html', context)
 
 
+@login_required
+def accept_applied(request,offer_id,user_id):
+    placement = PlacementOffer.objects.get(offer_id=offer_id)
+    user = User.objects.get(id = user_id)
+    placement.accepted.add(user)
+    notification = Notification(sender = request.user,
+                                receiver = user,
+                                message = "You have been placed")
+    notification.save()
+    student = Student.objects.get(user = user)
+    placement_approval = PlacementApproval(
+        nid = notification,
+        placement = placement,
+        student =student
+    )
+    placement_approval.save()
+    return redirect('placement_officer')
 
 @login_required
 def placement_offer_create(request):
@@ -499,6 +525,7 @@ def student_register(request):
     except Student.DoesNotExist:
         profile = None  # No profile exists yet
     print(profile,request.method)
+    copy = profile
 
     if request.method == 'POST':
         form = StudentRegistrationForm(request.POST, instance=profile)  # Preload data
@@ -508,13 +535,14 @@ def student_register(request):
             profile.reg_no = request.user.regno  # Ensure reg_no remains correct
             tutor = profile.tutor
             profile.tutor = None
-            notification = Notification(
-                sender = request.user,
-                receiver = tutor.user,
-                message = "New Student registeration "
-            )
-            notification.save()
-            TutorApproval(nid = notification).save()
+            if not copy:
+                notification = Notification(
+                    sender = request.user,
+                    receiver = tutor.user,
+                    message = "New Student registeration "
+                )
+                notification.save()
+                TutorApproval(nid = notification).save()
             profile.save()
             messages.success(request, "Profile updated successfully!")
             return redirect('student_dashboard')
