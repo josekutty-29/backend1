@@ -346,9 +346,9 @@
                                                                 {% if user in placement.accepted.all %}
                                                                 
                                                                     <!-- If the student has already applied, show "Accepted" button -->
-                                                                    <a href="" class="btn btn-sm btn-outline-success m-2" disabled>
+                                                                    <button href="" class="btn btn-sm btn-outline-success m-2" disabled>
                                                                         Accepted
-                                                                    </a>
+                                                                    </button>
                                                                 {% else %}
                                                                     <a href="{% url 'remove_applied' offer_id=placement.offer_id user_id=user.id %}" 
                                                                         class="btn btn-sm btn-outline-danger m-2">
