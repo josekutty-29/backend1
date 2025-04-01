@@ -172,6 +172,21 @@
             max-height:fit-content;
         }
         
+        .table {
+            max-height: 300px;  /* Adjust this height to the desired size */
+            overflow-y: auto;   /* Makes the tbody scrollable */
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa; /* You can change this color to match your design */
+            z-index: 1;  /* Keeps the header on top */
+        }
+        
+        
         
     </style>
     <script>
@@ -307,7 +322,7 @@
                            
                             {% if students %}
                                 
-                                <div class="table-container">
+                                <div class="container">
                                     <h2 class="mb-3">Student Details</h2>
                                     <form method="GET" class="mb-3">
                                         <div class="row g-2">
@@ -363,7 +378,7 @@
                                 </div>
                     
                                 
-                                <div class="table-container">
+                                <div>
                                     <h2 class="mt-5 mb-3">Student Marks</h2>
                                     <form method="GET" class="mb-3">
                                         <div class="row g-2">
@@ -387,7 +402,7 @@
                                         </div>
                                     </form>
                                     
-                                    <table class="table table-striped table-hover">
+                                    <table class="table table-striped table-hover overflow-y-scroll">
                                         <thead>
                                             <tr>
                                                 <th>Student</th>

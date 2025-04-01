@@ -479,6 +479,7 @@ def student_detail(request, student_id):
     form = StudentRegistrationForm(instance=student)
     context = {
         'form': form,
+        'details':True
     }
     return render(request, 'student_form.html', context)
 
@@ -549,6 +550,7 @@ def student_register(request):
             messages.success(request, "Profile updated successfully!")
             return redirect('student_dashboard')
         else:
+            print(form.errors)
             messages.error(request, form.errors)
     else:
         print("get...")
