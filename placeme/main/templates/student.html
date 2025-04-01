@@ -35,7 +35,10 @@
             list-style-type: none; /* Removes the bullet points */
             padding: 0; /* Removes default padding */
             margin: 0; /* Removes default margin */
-        }           
+        } 
+        .placement-card{
+            max-width:290px;
+        }          
     </style>
 </head>
 <body>
@@ -111,9 +114,9 @@
                         <button class="app-button filter-button" data-filter="applied">Applied</button>
                     </div>
                 
-                    <div class="col-12 page active-page" id="placementContainer">
+                    <div class="col-12 page d-flex flex-row flex-wrap active-page" id="placementContainer">
                         {% for placement in placements %}
-                            <div class="col-md-4 mb-4 placement-card" 
+                            <div class="col-md-4 m-2 placement-card" 
                                 data-status="{% if user in placement.applied_by.all %}applied{% elif user in placement.liked_by.all %}liked{% else %}available{% endif %}">
                                 <div class="card shadow-sm border-0">
                                     <div class="card-body">
@@ -190,17 +193,18 @@
                             <div class="list-group">
                                 {% for notification in notifications %}
                                     
-                                    <div class="list-group-item d-flex justify-content-between align-items-center 
+                                    <div class="list-group-item d-flex justify-content-between align-items-center m-1
                                                 {% if not approval.confirm %} bg-light {% endif %}">
                                         <div>
                                             <strong>{{ notification.nid.sender.username }}</strong> sent a request:
-                                            <p class="mb-1">{{ notification.nid.message }}</p>
-                                            <small class="text-muted">{{ notification.nid.date }}</small>
+                                            <p class="mb-1">{{ notification.nid.message }}{% if notification.placement.company_name %}
+                                                 at {{notification.placement.company_name}}                                        
+                                            {% endif %}</p>
+                                            
                                         </div>
                                         <div>
-                                            {% if notification.placement.company_name %}
-                                                placed at {{notification.placement.company_name}}                                        
-                                            {% endif %}
+                                            
+                                            <small class="text-muted">{{ notification.nid.date }}</small>
                                         </div>
                                     </div>
                                 {% endfor %}

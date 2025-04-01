@@ -43,14 +43,13 @@
             <button type="submit">
                 {% if form.instance.pk and form.instance.user.first_name %}Update{% else %}Register{% endif %}
             </button>
+            <a class="btn btn-primary" href="{% url 'student' %}" >Back to Student</a>
 
             {% if placement %}
                 <button type="button"  id="apply-btn" data-placement-id="{{ placement.offer_id }}">
                     Apply
                 </button>
-                <button type="submit">
-                    back to Student
-                </button>
+                
             {% endif %}
 
         </form>

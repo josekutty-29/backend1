@@ -11,6 +11,7 @@ from django.contrib.auth import logout
 import csv
 from .models import Tutor, Student, PlacementOffer, Marks, PlacementOfficer,Notification,TutorApproval,PlacementApproval
 from django.db.models import Q
+from django.utils import timezone
 
 def signup(request):
     if request.method == "POST":
@@ -68,7 +69,6 @@ def login_view(request):
             elif role == 'placement_officer':
                 return redirect('placement_officer')
             else:
-                
                 return redirect('login')
         else:
             messages.error(request, "Invalid username or password.")
@@ -76,6 +76,9 @@ def login_view(request):
     
     # For GET requests, render the login template.
     return render(request, 'index copy.html')
+
+def forgot_password(request):
+    return render()
 
 @login_required
 def student_dashboard(request):
@@ -93,7 +96,7 @@ def student_dashboard(request):
     if not mark:
         messages.warning(request,"Your tutor didnt update your mark...")
     if mark:
-       placements = PlacementOffer.objects.filter(cgpa_required__lte=mark.cgpa,sem = profile.semester,department = profile.department)
+       placements = PlacementOffer.objects.filter(cgpa_required__lte=mark.cgpa,sem = profile.semester,department = profile.department,final_date__gte=timezone.now().date())
     else:   
         placements = None
     context = {
@@ -285,7 +288,7 @@ def placement_officer_dashboard(request):
     except PlacementOfficer.DoesNotExist:
         profile = None
     
-    placement_officer = get_object_or_404(PlacementOfficer, user=request.user)
+    placement_officer = get_object_or_404(PlacementOfficer, user=request.user,)
     placements = PlacementOffer.objects.filter(created_by=placement_officer)
     
     # Get filter and sort parameters from request
@@ -534,7 +537,6 @@ def student_register(request):
             profile.user = request.user  # Ensure it's linked to the logged-in user
             profile.reg_no = request.user.regno  # Ensure reg_no remains correct
             tutor = profile.tutor
-            profile.tutor = None
             if not copy:
                 notification = Notification(
                     sender = request.user,
@@ -575,6 +577,16 @@ def student_apply_register(request,pid):
     if request.method == 'POST':
         form = StudentRegistrationForm(request.POST, instance=profile)  # Preload data
         if form.is_valid():
+            cleaned_data = form.cleaned_data  # Get all form data as a dictionary
+            reg_no = cleaned_data.get('reg_no')
+            department = cleaned_data.get('department')
+            semester = cleaned_data.get('semester')
+            division = cleaned_data.get('division')
+            date_of_birth = cleaned_data.get('date_of_birth')
+            batch = cleaned_data.get('batch')
+            phone_no = cleaned_data.get('phone_no')
+            tutor = cleaned_data.get('tutor')
+            print(reg_no,department,semester,division,date_of_birth,batch,phone_no,tutor)
             profile = form.save(commit=False)
             profile.user = request.user  # Ensure it's linked to the logged-in user
             profile.reg_no = request.user.regno  # Ensure reg_no remains correct
@@ -582,6 +594,7 @@ def student_apply_register(request,pid):
             messages.success(request, "Profile updated successfully!")
             return redirect('student_dashboard')
         else:
+            print("Invalid form")
             messages.error(request, form.errors)
     else:
         print("get...")

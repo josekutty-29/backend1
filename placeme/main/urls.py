@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from .views import * 
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('signup/', signup, name='signup'),
@@ -25,5 +26,10 @@ urlpatterns = [
     path('user/profile/', user_profile, name='user_profile'),
     path("export-applied-marks/<int:offer_id>", export_applied_students_marks, name="export_applied_students_marks"),
     path("confirm_approval/<int:id>", confirm_approval, name="confirm_approval"),
-    path("accept_applied/<int:offer_id>/<int:user_id>",accept_applied,name="accept_applied")
+    path("accept_applied/<int:offer_id>/<int:user_id>",accept_applied,name="accept_applied"),
+    path("forgot-password/",forgot_password,name="forgot_password"),
+    path('password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
+    path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
 ]
