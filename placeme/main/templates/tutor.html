@@ -270,8 +270,9 @@
                 <!-- Placements Page (Tutor) -->
                 <section id="placementsPage" class="page">
                     <h1 class="page-title">View Placements</h1>
-                    {% for placement in placements %}
-                        <div class="col-md-4 mb-4 placement-card" 
+                    <div class="container d-flex g-2 flex-wrap">
+                        {% for placement in placements %}
+                        <div class="col-md-3 m-2 " 
                             data-status="{% if user in placement.applied_by.all %}applied{% elif user in placement.liked_by.all %}liked{% else %}available{% endif %}">
                             <div class="card shadow-sm border-0">
                                 <div class="card-body">
@@ -289,6 +290,9 @@
                             <div class="alert alert-info">No placement offers available at the moment.</div>
                         </div>
                     {% endfor %}
+                    </div>
+                    
+                    
                 </section>
                 <!-- Students Page (For Tutor) -->
                 <section id="studentsPage" class="page active-page">
