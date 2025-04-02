@@ -96,7 +96,10 @@ def student_dashboard(request):
     if not mark:
         messages.warning(request,"Your tutor didnt update your mark...")
     if mark:
-       placements = PlacementOffer.objects.filter(cgpa_required__lte=mark.cgpa,sem = profile.semester,department = profile.department,final_date__gte=timezone.now().date())
+        placement = PlacementOffer.objects.all()
+        print(placement)
+        placements = PlacementOffer.objects.filter(cgpa_required__lte=mark.cgpa,sem = profile.semester,no_of_backpapers__lte = mark.backlog, department = profile.department,final_date__gte=timezone.now().date())
+       
     else:   
         placements = None
     context = {
@@ -144,6 +147,7 @@ def toggle_apply(request, offer_id):
 
 @login_required
 def tutor_dashboard(request):
+    tutor_instance = get_object_or_404(Tutor, user=request.user)
     if request.method == "POST" and request.FILES.get("csv_file"):
         csv_file = request.FILES["csv_file"]
 
@@ -156,7 +160,7 @@ def tutor_dashboard(request):
 
         for row in reader:
             try:
-                student = Student.objects.get(reg_no=row["reg_no"])
+                student = Student.objects.get(reg_no=row["reg_no"],tutor = tutor_instance)
                 mark, created = Marks.objects.update_or_create(
                     reg_no=student,
                     sem=row["sem"],
@@ -167,10 +171,10 @@ def tutor_dashboard(request):
                 )
                 messages.success(request, f"{student.user.first_name} {student.user.last_name}'s mark updated successfully")
             except Student.DoesNotExist:
-                messages.error(request, f"Student with register number {row['reg_no']} not found.")
+                messages.error(request, f"Student with register number {row['reg_no']} is not you student .")
         return redirect("tutor_dashboard")
 
-    tutor_instance = get_object_or_404(Tutor, user=request.user)
+    
     students = Student.objects.filter(tutor=tutor_instance).exclude(reg_no__isnull=True)
 
     # Filtering logic
@@ -223,6 +227,8 @@ def tutor_dashboard(request):
 @login_required
 def export_marks_csv(request):
     # Create the HttpResponse object with CSV header
+    tutor = Tutor.objects.filter(user=request.user).first()
+    students = Student.objects.filter(tutor=tutor)
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = 'attachment; filename="student_marks.csv"'
 
@@ -230,9 +236,12 @@ def export_marks_csv(request):
     # Write the header row
     writer.writerow(["Register Number", "Semester", "CGPA", "Backlogs"])
 
-    # Query all marks and write them into the CSV file
-    for mark in Marks.objects.all():
-        writer.writerow([mark.reg_no.reg_no, mark.cgpa, mark.backlog, mark.sem])
+    # Only query marks for students of the current tutor
+    for student in students:
+        student_marks = Marks.objects.filter(reg_no=student)
+        for mark in student_marks:
+            writer.writerow([mark.reg_no.reg_no, mark.sem, mark.cgpa, mark.backlog])
+
     return response
 
 
@@ -453,7 +462,7 @@ def placement_offer_update(request, offer_id):
             return redirect("placement_officer")
     else:
         form = PlacementOfferForm(instance=placement_offer)
-    return render(request, "tutor_form.html", {"form": form, "edit": True})
+    return render(request, "placement_offer_form.html", {"form": form, "edit": True})
 
 @login_required
 def placement_offer_delete(request,offer_id):
